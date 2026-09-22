@@ -11,14 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('elections', function (Blueprint $table) {
+        Schema::create('candidates', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('position_id')->constrained()->cascadeOnDelete();
             $table->string('nama');
-            $table->string('wilayah'); // RT/RW/DESA yang menyelenggarakan
-            $table->enum('status', ['draft', 'berjalan', 'selesai'])->default('draft');
-            $table->dateTime('tanggal_mulai')->nullable();
-            $table->dateTime('tanggal_selesai')->nullable();
+            $table->string('foto')->nullable();
+            $table->unsignedInteger('nomor_urut');
+            $table->text('visi_misi')->nullable();
             $table->timestamps();
+
+            $table->unique(['position_id', 'nomor_urut']);
         });
     }
 
@@ -27,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('elections');
+        Schema::dropIfExists('candidates');
     }
 };
