@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\CandidateController;
 use App\Http\Controllers\Admin\ElectionController;
 use App\Http\Controllers\Admin\PositionController;
 use App\Http\Controllers\Admin\TpsController;
+use App\Http\Controllers\Admin\VoterController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -42,4 +43,21 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::resource('elections.tps', TpsController::class)
             ->shallow()
             ->parameters(['tps' => 'tpsLokasi']); // hindari bentrok nama 'tps' sbg kata jamak
+        Route::get('elections/{election}/voters', [VoterController::class, 'index'])
+            ->name('elections.voters.index');
+
+        Route::post('elections/{election}/voters/import', [VoterController::class, 'import'])
+            ->name('elections.voters.import');
+
+        Route::patch('voters/{voter}/verify', [VoterController::class, 'verify'])
+            ->name('voters.verify');
+
+        Route::patch('voters/{voter}/reject', [VoterController::class, 'reject'])
+            ->name('voters.reject');
+
+        Route::patch('voters/{voter}/assign-tps', [VoterController::class, 'assignTps'])
+            ->name('voters.assign-tps');
+
+        Route::delete('voters/{voter}', [VoterController::class, 'destroy'])
+            ->name('voters.destroy');
     });
