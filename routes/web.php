@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\Admin\CandidateController;
+use App\Http\Controllers\Admin\ElectionController;
+use App\Http\Controllers\Admin\PositionController;
+use App\Http\Controllers\Admin\TpsController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -24,4 +28,18 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
+
+Route::middleware(['auth', 'verified', 'admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::resource('elections', ElectionController::class);
+        Route::resource('elections.positions', PositionController::class)
+            ->shallow(); // /admin/positions/{position} untuk show/edit/update/destroy
+        Route::resource('positions.candidates', CandidateController::class)
+            ->shallow();
+        Route::resource('elections.tps', TpsController::class)
+            ->shallow()
+            ->parameters(['tps' => 'tpsLokasi']); // hindari bentrok nama 'tps' sbg kata jamak
+    });
