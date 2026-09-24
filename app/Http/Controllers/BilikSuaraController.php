@@ -8,6 +8,7 @@ use App\Models\Vote;
 use App\Models\VoterToken;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -39,6 +40,9 @@ class BilikSuaraController extends Controller
             return back()->with('error', 'Token tidak valid, sudah dipakai, atau sudah kedaluwarsa. Hubungi petugas TPS.');
         }
 
+        // Regenerasi session ID setelah token tervalidasi — cegah session fixation
+        // (mencegah orang lain menebak/mencuri session sebelum token dimasukkan).
+        $request->session()->regenerate();
         $request->session()->put('bilik_token_id_' . $tps->id, $token->id);
 
         return redirect()->route('bilik.pilih', $kodeTps);
@@ -63,15 +67,21 @@ class BilikSuaraController extends Controller
         ]);
     }
 
-    /** Langkah 3: submit pilihan, catat suara + cetak struk audit. */
+    /**
+     * Langkah 3: submit pilihan, catat suara + cetak struk audit.
+     *
+     * Dibungkus DB::transaction() + lockForUpdate() supaya kalau ada 2 request submit
+     * dengan token yang sama datang hampir bersamaan (double-click, request diulang
+     * manual, atau percobaan replay), hanya SATU yang berhasil — request kedua akan
+     * menunggu giliran lock, lalu melihat status token sudah 'terpakai' dan ditolak.
+     */
     public function submit(Request $request, string $kodeTps): Response|RedirectResponse
     {
         $tps = Tps::where('kode_tps', $kodeTps)->with('election.positions')->firstOrFail();
 
         $tokenId = $request->session()->get('bilik_token_id_' . $tps->id);
-        $token = $tokenId ? VoterToken::find($tokenId) : null;
 
-        if (! $token || ! $token->isValid() || $token->tps_id !== $tps->id) {
+        if (! $tokenId) {
             return redirect()->route('bilik.masuk', $kodeTps)
                 ->with('error', 'Sesi token tidak valid, silakan scan ulang.');
         }
@@ -84,33 +94,53 @@ class BilikSuaraController extends Controller
             'pilihan.*.candidate_id' => ['required', 'integer', 'exists:candidates,id'],
         ]);
 
-        $batchCode = 'BTC-' . Str::upper(Str::random(10));
-        $struk = [];
+        try {
+            [$batchCode, $struk] = DB::transaction(function () use ($tokenId, $tps, $data) {
+                // lockForUpdate() mengunci baris token ini sampai transaksi selesai —
+                // request lain yang coba pakai token yang sama harus menunggu di sini.
+                $token = VoterToken::where('id', $tokenId)->lockForUpdate()->first();
 
-        foreach ($data['pilihan'] as $item) {
-            $vote = Vote::create([
-                'position_id' => $item['position_id'],
-                'candidate_id' => $item['candidate_id'],
-                'tps_id' => $tps->id,
-                'token_hash' => $token->token_hash,
-                'waktu_vote' => now(),
-                'synced' => true, // langsung tersimpan di server pusat (bukan lewat Electron/offline)
-            ]);
+                if (! $token || ! $token->isValid() || $token->tps_id !== $tps->id) {
+                    throw new \RuntimeException('token_invalid');
+                }
 
-            $receipt = AuditReceipt::create([
-                'vote_id' => $vote->id,
-                'nomor_struk' => $batchCode . '-' . $item['position_id'],
-                'qr_verifikasi' => $batchCode,
-                'dicetak_pada' => now(),
-                'status_audit' => 'belum_dicek',
-            ]);
+                $batchCode = 'BTC-' . Str::upper(Str::random(10));
+                $struk = [];
 
-            $struk[] = ['posisi_id' => $item['position_id'], 'nomor_struk' => $receipt->nomor_struk];
+                foreach ($data['pilihan'] as $item) {
+                    $vote = Vote::create([
+                        'position_id' => $item['position_id'],
+                        'candidate_id' => $item['candidate_id'],
+                        'tps_id' => $tps->id,
+                        'token_hash' => $token->token_hash,
+                        'waktu_vote' => now(),
+                        'synced' => true,
+                    ]);
+
+                    $receipt = AuditReceipt::create([
+                        'vote_id' => $vote->id,
+                        'nomor_struk' => $batchCode . '-' . $item['position_id'],
+                        'qr_verifikasi' => $batchCode,
+                        'dicetak_pada' => now(),
+                        'status_audit' => 'belum_dicek',
+                    ]);
+
+                    $struk[] = ['posisi_id' => $item['position_id'], 'nomor_struk' => $receipt->nomor_struk];
+                }
+
+                // Ditandai 'terpakai' SEBELUM transaksi commit — request kedua yang
+                // menunggu lock akan melihat status ini begitu lock dilepas.
+                $token->update(['status' => 'terpakai', 'dipakai_pada' => now()]);
+
+                return [$batchCode, $struk];
+            });
+        } catch (\RuntimeException $e) {
+            return redirect()->route('bilik.masuk', $kodeTps)
+                ->with('error', 'Token ini sudah dipakai atau tidak valid lagi.');
         }
 
-        $token->update(['status' => 'terpakai', 'dipakai_pada' => now()]);
-
         $request->session()->forget('bilik_token_id_' . $tps->id);
+        $request->session()->regenerate(); // putus sesi lama setelah selesai vote
 
         return Inertia::render('Bilik/Receipt', [
             'tps' => $tps,
