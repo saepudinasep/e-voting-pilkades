@@ -23,7 +23,8 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
-        "qrcode.react": "^4.2.0"
+        "qrcode.react": "^4.2.0",
+        "recharts": "^3.10.1"
     },
     "allowScripts": {
         "esbuild@0.28.2": true

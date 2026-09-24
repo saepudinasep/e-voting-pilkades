@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CandidateController;
 use App\Http\Controllers\Admin\ElectionController;
 use App\Http\Controllers\Admin\PositionController;
+use App\Http\Controllers\Admin\ResultController;
 use App\Http\Controllers\Admin\TpsController;
 use App\Http\Controllers\Admin\VoterController;
 use App\Http\Controllers\ProfileController;
@@ -60,4 +62,9 @@ Route::middleware(['auth', 'verified', 'admin'])
 
         Route::delete('voters/{voter}', [VoterController::class, 'destroy'])
             ->name('voters.destroy');
+
+        Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+
+        Route::get('elections/{election}/results', [ResultController::class, 'show'])->name('elections.results');
+        Route::get('elections/{election}/results/poll', [ResultController::class, 'poll'])->name('elections.results.poll');
     });
