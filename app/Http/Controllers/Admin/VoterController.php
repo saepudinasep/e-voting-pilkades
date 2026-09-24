@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
-use Maatwebsite\Excel\Excel;
+use Maatwebsite\Excel\Facades\Excel;
 
 class VoterController extends Controller
 {

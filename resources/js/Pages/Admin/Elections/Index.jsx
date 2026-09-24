@@ -19,7 +19,7 @@ export default function Index({ elections }) {
         >
             <Head title="Kelola Pemilihan" />
 
-            <div className="py-8 max-w-5xl mx-auto px-4">
+            <div className="py-8 max-w-6xl mx-auto px-4">
                 <div className="flex justify-end mb-4">
                     <Link
                         href={route("admin.elections.create")}
@@ -39,6 +39,7 @@ export default function Index({ elections }) {
                                 <th className="px-4 py-3">Posisi</th>
                                 <th className="px-4 py-3">DPT</th>
                                 <th className="px-4 py-3">TPS</th>
+                                <th className="px-4 py-3">Hasil</th>
                                 <th className="px-4 py-3"></th>
                             </tr>
                         </thead>
@@ -75,7 +76,7 @@ export default function Index({ elections }) {
                                             )}
                                             className="text-blue-600 hover:underline"
                                         >
-                                            {el.voters_count} dpt
+                                            {el.voters_count}
                                         </Link>
                                     </td>
                                     <td className="px-4 py-3">
@@ -89,7 +90,18 @@ export default function Index({ elections }) {
                                             {el.tps_list_count} TPS
                                         </Link>
                                     </td>
-                                    <td className="px-4 py-3 text-right space-x-2">
+                                    <td className="px-4 py-3">
+                                        <Link
+                                            href={route(
+                                                "admin.elections.results",
+                                                el.id,
+                                            )}
+                                            className="text-green-600 hover:underline font-medium"
+                                        >
+                                            Lihat Hasil
+                                        </Link>
+                                    </td>
+                                    <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
                                         <Link
                                             href={route(
                                                 "admin.elections.edit",
@@ -111,7 +123,7 @@ export default function Index({ elections }) {
                             {elections.data.length === 0 && (
                                 <tr>
                                     <td
-                                        colSpan={7}
+                                        colSpan={8}
                                         className="px-4 py-6 text-center text-gray-400"
                                     >
                                         Belum ada pemilihan. Buat yang pertama.
