@@ -13,10 +13,11 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
+use Inertia\Response as InertiaResponse;
 
 class VoterController extends Controller
 {
-    public function index(Request $request, Election $election): Response
+    public function index(Request $request, Election $election): InertiaResponse
     {
         $status = $request->query('status');
 
@@ -41,6 +42,43 @@ class VoterController extends Controller
         ]);
     }
 
+    /**
+     * Tambah 1 pemilih manual lewat form — pelengkap untuk import massal, dipakai
+     * kalau cuma perlu tambah/koreksi beberapa data tanpa bikin file Excel/CSV baru.
+     */
+    public function store(Request $request, Election $election): RedirectResponse
+    {
+        $data = $request->validate([
+            'nik' => ['required', 'digits:16'],
+            'nama' => ['required', 'string', 'max:255'],
+            'alamat' => ['nullable', 'string'],
+            'tps_id' => ['nullable', 'exists:tps,id'],
+        ]);
+
+        $nikHash = hash('sha256', $data['nik']);
+
+        $sudahAda = $election->voters()->where('nik_hash', $nikHash)->exists();
+        if ($sudahAda) {
+            return back()->withErrors(['nik' => 'NIK ini sudah terdaftar di DPT pemilihan ini.'])->withInput();
+        }
+
+        $voter = $election->voters()->create([
+            'tps_id' => $data['tps_id'] ?? null,
+            'nik_hash' => $nikHash,
+            'nik_encrypted' => $data['nik'], // otomatis dienkripsi lewat cast di model Voter
+            'nama' => $data['nama'],
+            'alamat' => $data['alamat'] ?? null,
+            'status_verifikasi' => 'belum',
+        ]);
+
+        AuditLog::catat('tambah_voter_manual', 'voters', $voter->id, null, [
+            'election_id' => $election->id,
+            'nama' => $voter->nama,
+        ]);
+
+        return back()->with('success', "{$voter->nama} berhasil ditambahkan ke DPT.");
+    }
+
     public function import(Request $request, Election $election): RedirectResponse
     {
         $request->validate([
@@ -62,6 +100,21 @@ class VoterController extends Controller
         ]);
 
         return back()->with($jumlahGagal > 0 ? 'warning' : 'success', $pesan);
+    }
+
+    /**
+     * Download template CSV kosong (cuma header + 1 baris contoh) supaya admin tidak
+     * perlu nebak-nebak nama kolom yang benar sebelum import massal.
+     */
+    public function downloadTemplate(): \Symfony\Component\HttpFoundation\Response
+    {
+        $isi = "nik,nama,alamat,kode_tps\n"
+            . "3271010101900001,Contoh Nama Pemilih,Jl. Contoh Alamat RT01/RW02,\n";
+
+        return Response::make($isi, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="template-dpt.csv"',
+        ]);
     }
 
     public function verify(Voter $voter): RedirectResponse

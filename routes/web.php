@@ -84,6 +84,12 @@ Route::middleware(['auth', 'verified', 'admin'])
             ->name('voters.assign-tps');
         Route::delete('voters/{voter}', [VoterController::class, 'destroy'])
             ->name('voters.destroy');
+        Route::post('elections/{election}/voters', [VoterController::class, 'store'])
+            ->name('elections.voters.store');
+
+        Route::get('voters/template', [VoterController::class, 'downloadTemplate'])
+            ->name('voters.template');
+
 
         Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 
