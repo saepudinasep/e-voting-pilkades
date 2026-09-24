@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Laravel\Sanctum\HasApiTokens;
 
 class Tps extends Model
 {
-    use HasFactory;
+    use HasFactory, HasApiTokens;
 
     protected $table = 'tps';
 
@@ -49,5 +50,16 @@ class Tps extends Model
     public function syncLogs(): HasMany
     {
         return $this->hasMany(SyncLog::class);
+    }
+
+    /**
+     * Generate token device baru untuk TPS ini, sekaligus mencabut token lama
+     * (1 TPS = 1 device aktif pada satu waktu — kalau perangkat diganti, generate ulang).
+     */
+    public function generateDeviceToken(): string
+    {
+        $this->tokens()->delete();
+
+        return $this->createToken('device-' . $this->kode_tps)->plainTextToken;
     }
 }

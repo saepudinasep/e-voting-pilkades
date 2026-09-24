@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ElectionController;
 use App\Http\Controllers\Admin\PositionController;
 use App\Http\Controllers\Admin\ResultController;
 use App\Http\Controllers\Admin\TpsController;
+use App\Http\Controllers\Admin\TpsDeviceTokenController;
 use App\Http\Controllers\Admin\VoterController;
 use App\Http\Controllers\BilikSuaraController;
 use App\Http\Controllers\ProfileController;
@@ -103,4 +104,7 @@ Route::prefix('bilik/{kodeTps}')
         Route::middleware('throttle:10,1')->group(function () {
             Route::post('/submit', [BilikSuaraController::class, 'submit'])->name('submit');
         });
+
+        Route::post('tps/{tpsLokasi}/device-token', [TpsDeviceTokenController::class, 'generateToken'])
+            ->name('tps.device-token');
     });
