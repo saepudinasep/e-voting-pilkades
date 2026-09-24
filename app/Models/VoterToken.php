@@ -43,8 +43,17 @@ class VoterToken extends Model
     }
 
     /**
-     * Generate token acak, kembalikan versi PLAINTEXT untuk dicetak/ditampilkan sebagai QR,
-     * sementara yang disimpan ke DB hanya HASH-nya. Voter/petugas tidak boleh melihat token_hash.
+     * Generate token acak, kembalikan versi PLAINTEXT untuk di-encode jadi QR,
+     * sementara yang disimpan ke DB adalah hash SHA-256-nya.
+     *
+     * Catatan perubahan dari versi Tahap 1: sebelumnya pakai Hash::make() (bcrypt),
+     * yang cocok untuk PASSWORD (dibandingkan satu-per-satu via Hash::check), tapi
+     * TIDAK cocok untuk TOKEN yang perlu di-lookup langsung dari QR yang di-scan
+     * (butuh WHERE token_hash = ... , bukan looping cek semua token aktif).
+     * Karena token ini string acak 32 karakter (entropi tinggi, tidak bisa ditebak),
+     * hash satu-arah tanpa salt (sha256) tetap aman dipakai sebagai kunci lookup —
+     * beda kasus dengan hashing password yang butuh salt karena manusia sering
+     * pakai kombinasi yang mudah ditebak.
      */
     public static function generateFor(Voter $voter, Tps $tps, int $dibuatOleh, int $masaBerlakuMenit = 15): array
     {
@@ -53,7 +62,7 @@ class VoterToken extends Model
         $token = static::create([
             'voter_id' => $voter->id,
             'tps_id' => $tps->id,
-            'token_hash' => Hash::make($plainToken),
+            'token_hash' => hash('sha256', $plainToken),
             'status' => 'aktif',
             'dibuat_oleh' => $dibuatOleh,
             'kedaluwarsa_pada' => now()->addMinutes($masaBerlakuMenit),
@@ -63,6 +72,16 @@ class VoterToken extends Model
             'token_model' => $token,
             'plain_token' => $plainToken, // ini yang di-encode jadi QR untuk voter
         ];
+    }
+
+    /** Cari token aktif & belum kedaluwarsa dari plaintext token hasil scan QR. */
+    public static function findValid(string $plainToken, int $tpsId): ?self
+    {
+        return static::where('tps_id', $tpsId)
+            ->where('token_hash', hash('sha256', $plainToken))
+            ->where('status', 'aktif')
+            ->where('kedaluwarsa_pada', '>', now())
+            ->first();
     }
 
     public function isValid(): bool
