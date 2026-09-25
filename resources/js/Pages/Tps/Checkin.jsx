@@ -1,17 +1,17 @@
-import { Head, router, useForm } from '@inertiajs/react';
-import { QRCodeSVG } from 'qrcode.react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Head, router, useForm } from "@inertiajs/react";
+import { QRCodeSVG } from "qrcode.react";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 
 export default function Checkin({ tps, voter, nikDicari, error, tokenBaru }) {
-    const { data, setData } = useForm({ nik: nikDicari ?? '' });
+    const { data, setData } = useForm({ nik: nikDicari ?? "" });
 
     const cari = (e) => {
         e.preventDefault();
-        router.get(route('tps.checkin'), { nik: data.nik });
+        router.get(route("tps.checkin"), { nik: data.nik });
     };
 
     const buatToken = () => {
-        router.post(route('tps.checkin.token', voter.id));
+        router.post(route("tps.checkin.token", voter.id));
     };
 
     return (
@@ -25,9 +25,14 @@ export default function Checkin({ tps, voter, nikDicari, error, tokenBaru }) {
             <Head title="Check-in Pemilih" />
 
             <div className="py-8 max-w-lg mx-auto px-4 space-y-6">
-                <form onSubmit={cari} className="bg-white shadow rounded-lg p-4 flex gap-3 items-end">
+                <form
+                    onSubmit={cari}
+                    className="bg-white shadow rounded-lg p-4 flex gap-3 items-end"
+                >
                     <div className="flex-1">
-                        <label className="block text-sm font-medium mb-1">NIK Pemilih</label>
+                        <label className="block text-sm font-medium mb-1">
+                            NIK Pemilih
+                        </label>
                         <input
                             type="text"
                             inputMode="numeric"
@@ -35,7 +40,7 @@ export default function Checkin({ tps, voter, nikDicari, error, tokenBaru }) {
                             className="w-full border rounded-lg px-3 py-2 font-mono"
                             placeholder="16 digit NIK"
                             value={data.nik}
-                            onChange={(e) => setData('nik', e.target.value)}
+                            onChange={(e) => setData("nik", e.target.value)}
                         />
                     </div>
                     <button
@@ -47,23 +52,29 @@ export default function Checkin({ tps, voter, nikDicari, error, tokenBaru }) {
                 </form>
 
                 {error && (
-                    <div className="bg-red-50 text-red-700 rounded-lg p-4 text-sm">{error}</div>
+                    <div className="bg-red-50 text-red-700 rounded-lg p-4 text-sm">
+                        {error}
+                    </div>
                 )}
 
                 {voter && !tokenBaru && (
                     <div className="bg-white shadow rounded-lg p-4 space-y-3">
                         <div>
                             <p className="font-medium text-lg">{voter.nama}</p>
-                            <p className="text-sm text-gray-500">{voter.alamat}</p>
+                            <p className="text-sm text-gray-500">
+                                {voter.alamat}
+                            </p>
                             <p className="text-sm mt-1">
-                                Status:{' '}
+                                Status:{" "}
                                 <span
                                     className={
-                                        voter.status_verifikasi === 'terverifikasi'
-                                            ? 'text-green-600'
-                                            : voter.status_verifikasi === 'ditolak'
-                                            ? 'text-red-600'
-                                            : 'text-yellow-600'
+                                        voter.status_verifikasi ===
+                                        "terverifikasi"
+                                            ? "text-green-600"
+                                            : voter.status_verifikasi ===
+                                                "ditolak"
+                                              ? "text-red-600"
+                                              : "text-yellow-600"
                                     }
                                 >
                                     {voter.status_verifikasi}
@@ -71,9 +82,10 @@ export default function Checkin({ tps, voter, nikDicari, error, tokenBaru }) {
                             </p>
                         </div>
 
-                        {voter.status_verifikasi === 'ditolak' ? (
+                        {voter.status_verifikasi === "ditolak" ? (
                             <p className="text-red-600 text-sm">
-                                Pemilih ini ditandai ditolak, tidak bisa diberi token voting.
+                                Pemilih ini ditandai ditolak, tidak bisa diberi
+                                token voting.
                             </p>
                         ) : (
                             <button
@@ -89,18 +101,37 @@ export default function Checkin({ tps, voter, nikDicari, error, tokenBaru }) {
                 {tokenBaru && (
                     <div className="bg-white shadow rounded-lg p-6 text-center space-y-4">
                         <p className="font-medium">
-                            Token untuk <span className="text-blue-600">{voter.nama}</span>
+                            Token untuk{" "}
+                            <span className="text-blue-600">{voter.nama}</span>
                         </p>
                         <div className="flex justify-center">
                             <QRCodeSVG value={tokenBaru.plain} size={220} />
                         </div>
+
+                        {/* Fallback kalau belum ada scanner QR fisik di Bilik Suara —
+                            token bisa di-copy manual dan diketik/paste di field token. */}
+                        <div>
+                            <p className="text-xs text-gray-400 mb-1">
+                                Belum ada scanner? Salin token ini manual:
+                            </p>
+                            <input
+                                readOnly
+                                value={tokenBaru.plain}
+                                onClick={(e) => e.target.select()}
+                                className="w-full border rounded-lg px-3 py-2 text-center font-mono text-sm bg-gray-50"
+                            />
+                        </div>
+
                         <p className="text-xs text-gray-400">
-                            Berlaku sampai{' '}
-                            {new Date(tokenBaru.kedaluwarsa).toLocaleTimeString('id-ID')}. Minta pemilih
-                            scan QR ini di layar Bilik Suara Digital.
+                            Berlaku sampai{" "}
+                            {new Date(tokenBaru.kedaluwarsa).toLocaleTimeString(
+                                "id-ID",
+                            )}
+                            . Kalau sudah ada scanner fisik di Bilik Suara,
+                            cukup scan QR di atas.
                         </p>
                         <button
-                            onClick={() => router.get(route('tps.checkin'))}
+                            onClick={() => router.get(route("tps.checkin"))}
                             className="text-sm text-gray-500 hover:underline"
                         >
                             Selesai, kembali ke pencarian

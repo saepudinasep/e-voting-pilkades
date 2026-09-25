@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use Illuminate\Auth\Authenticatable;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
 
-class Tps extends Model
+class Tps extends Model implements AuthenticatableContract
 {
-    use HasFactory, HasApiTokens;
+    use HasFactory, HasApiTokens, Authenticatable;
 
     protected $table = 'tps';
 
@@ -52,10 +54,6 @@ class Tps extends Model
         return $this->hasMany(SyncLog::class);
     }
 
-    /**
-     * Generate token device baru untuk TPS ini, sekaligus mencabut token lama
-     * (1 TPS = 1 device aktif pada satu waktu — kalau perangkat diganti, generate ulang).
-     */
     public function generateDeviceToken(): string
     {
         $this->tokens()->delete();
